@@ -1,0 +1,285 @@
+---
+title: "Fundamentals of Computing and Data Display"
+author: "Michael Glasper & Ilmul Jahan-Tani"
+date: "December,6,2021"
+output:
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+    df_print: kable
+subtitle: Term Paper
+references:
+- title: Data Table for Trends in Number of COVID-19 Vaccinations in the US
+- corporate author: United States. Agency for Toxic Substances and Disease Registry.
+    Geospatial Research, Analysis and Services Program
+- container-title: Centers for Disease Control and Prevention
+- type: webpage
+- issued: null
+- year: 2020
+- URL: https://covid.cdc.gov/covid-data-tracker/#vaccination-trends
+- title: 10 Rumors about the COVID-19 vaccines that aren’t true
+- corporate author: Henry Ford Health System Staff
+- container-title: Henry Ford Live Well
+- type: webpage
+- issued: null
+- year: 2021
+- URL: https://www.henryford.com/blog/2021/08/vaccine-myths
+---
+
+```{r, include = FALSE}
+library(knitr)
+library(tidyverse)
+library(xml2)
+library(rvest)
+library(gtrendsR)
+library(dplyr)
+library(tidyr)
+library(readxl)
+library(patchwork)
+```
+
+## Introduction
+    The Food and Drug Administration of the United States (FDA or USFDA) is a federal agency within the Department of Health and Human Services. Food safety, tobacco products, dietary supplements, prescription and over-the-counter pharmaceutical drugs (medications), vaccines, biopharmaceuticals, blood transfusions, medical devices, electromagnetic radiation emitting devices (ERED), cosmetics, animal foods and feed, and veterinary products are all under the FDA's control and supervision.
+Several concerns about the COVID-19 vaccine have led many to not want to get the vaccine. FDA approved the first COVID-19 Vaccine, Pfizer, on August 23, 2021. 
+  Being approved by the FDA, people can be very confident that this vaccine meets the high standards for safety, effectiveness, and manufacturing quality the FDA requires of an approved product. It is recognized that the FDA approval of a vaccine may instill additional confidence to get vaccinated. The event of FDA approval puts one step closer to altering the course of the pandemic in the U.S.The question  have constructed is Did FDA’s approval of Pfizer vaccination increase vaccination rates in the U.S.?
+  In this paper, we will be looking particularly at the Pfizer vaccine and whether or not the FDA’s approval of the vaccination increases vaccination rates in the U.S using the search intensity for insight on if individuals are actually vaccinated or considering getting vaccinated, using 30 day before and after periods of the vaccination approval date. 
+
+##Data
+
+
+  We will be using two datasets which are:CDC Covid DATA: Trends in Number of COVID-19 Vaccinations in the US: Using Google Trends API data, we can find the search trends about vaccines and the uncertainties will be discovered. Range of searches can be compared before and after the FDA approval.
+
+	 With the google trends data we decided to use three key words/ searches that will act as indicators for us to get a sense of covid vaccination considerations or intentions on getting the vaccine. FDA approved the Pfizer  vaccination on August 23, 2021. This date was vital being  that we looked at searches 30 days before and after the  FDA’s approval. Using this data is helpful to our project because it provided the search intensity of covid vaccine related topics that insinuate interest of getting the vaccine based off of searches we have determined as indicators of vaccine considerations. During the cleaning , and extraction of the Google trends data we noticed peaks in the middle of each time period.
+	
+	 As for the CDC covid data tracker  we extracted a table from the website that provides daily updates for covid shot doses. Similar to what we did with the google trends data we focused on 30 days before and after the approval. Once sorting out the data by each time period, we will later use this information to get an estimate of the doses for each period and  in relation with the Google trends data.
+
+
+
+```{r}
+#Google trends data 30 days before approval 
+res <- gtrends(c(" Pfizer vaccine", " covid vaccine near me"," Pfizer side effects"), geo = "US", time = "2021-07-23 2021-08-23", low_search_volume = T)
+plot(res)
+res1<- as_tibble(res$interest_by_region)
+
+res2<- res1 %>% 
+  group_by(keyword) %>%
+  summarise(mean = mean(hits,na.rm=T),
+            median = median(hits,na.rm=T), 
+            variance = var(hits,na.rm=T))
+res2
+res2 <- res1 %>%
+  group_by(keyword) %>%
+  tidyr::pivot_wider(names_from = keyword,
+              values_from = hits) %>%
+  na.omit()
+res2<- subset(res2,select = -c(2:3))
+res2<- as.data.frame(res2)
+```
+ Below will display the google trends data 30 days after FDA's approval. Including the mean and median of hits. 
+
+```{r}
+#Google trends data 30 days after approval
+
+resA <- gtrends(c( " Pfizer vaccine" ,"covid vaccine near me"," Pfizer side effects"), geo = "US", time = "2021-08-23 2021-09-23", low_search_volume = T)
+resA1<- as_tibble(resA$interest_by_region)
+plot(resA)
+resA1<- resA1 %>% 
+  group_by(keyword) %>%
+  summarise(mean = mean(hits,na.rm=T),
+            median = median(hits,na.rm=T),
+      variance = var(hits,na.rm=T))
+
+```
+#CDC Data Tracker Data 
+As for the CDC covid data tracker  we extracted a table from the website that provides daily updates for covid shot doses. Similar to what we did with the google trends data we focused on 30 days before and after the approval. Once sorting out the data by each time period, we will later use this information to get an estimate of the doses for each period and  in relation with the Google trends data.This data is use for the project provides an daily update of doses administered by date , this will possibly give us a true value of vaccination ratyes for each time period.
+```{r, include = FALSE}
+# Filtering of dates 7/23/2021-09/23/2021
+
+vr<-read_excel("GTRENDS.xlsx")
+v<- vr[222:284,]
+
+# Calculation of vaccination rate 30 days before approval
+vb<- v[1:32,] # 30 befor vacc
+
+
+# Calculation of vaccination rate 30 days after  approval
+va<- v[32:63,] # 30 after vacc
+va<- na.omit(va)
+
+```
+#Results
+
+```{r, include = FALSE}
+#Means
+summary(vb$`Total Doses Administered Daily`) #07/23/21-08/23/21
+summary(va$`Total Doses Administered Daily`)#08/23/21-09/23/21
+
+
+lm<-lm(`Total Doses Administered Daily`~ Date , v)
+summary(lm)
+
+lmb<-lm(`Total Doses Administered Daily`~ Date , vb)
+summary(lmb)
+
+lma<-lm(`Total Doses Administered Daily`~ Date,data=va)
+summary(lma)
+```
+
+The date is significantly and positively associated with total daily administered doses before the
+approval, which means, with each additional day, the daily administered doses increased. However,after the approval date is negatively associated with daily administration of doses and this is significant.
+With each additional date, the administration of daily doses decreased, as we have seen in the plots
+above.
+
+
+### Data exploration
+
+
+```{r}
+#plot of 30 days before by dates see what mattered with dates
+date1 <- gtrends(c(" Pfizer vaccine", " covid vaccine near me"), geo = "US", time = "2021-07-23 2021-08-23", low_search_volume = T)
+plot(date1)
+
+d<- as_tibble(date1$interest_over_time)
+d<- subset(d,select = -c(4:7))
+d<- group_by(d, keyword)
+d<- as.data.frame(d)
+d
+d2<- d %>%
+  group_by(keyword) %>%
+  tidyr::pivot_wider(names_from = keyword,
+              values_from = hits) %>%
+  na.omit()
+View(d2)
+d2$date<-as.character(d2$date)
+d2$` Pfizer vaccine`<-as.integer(d2$` Pfizer vaccine`)
+d2$` covid vaccine near me`<-as.integer(d2$` covid vaccine near me`)
+```
+
+### Analysis
+
+
+Average(mean) increased covid vaccine near me,Pfizer side effects. Many are considering or have already recived vaccine based on searches. Before the approval the interest around COVID vaccine near  peaked between August 2 and         August 9, whereas, after the approval the interest around vaccine peaked between August 30 and September 6,
+right after the approval. The interest around &#39;Pfizer side effects; and & Pfizer vaccine ; remained stable before and after the approval.From the Gtrends data, we notice small changes in mean and median, and notable increase in variance before and after the FDA’s approval.Search result for COVID vaccine near me remained stable before (mean = 79.1) and after (mean = 79.3) the approval.The mean and median increased for search results regarding &#39;Pfizer vaccines ; (mean from 55.2 to 59.9) and &#39;Pfizer side effects#39; (mean from 37.1 to 41).After the FDA’s approval the variance decreased with regards to the searches of Pfizer side effects and Pfizer vaccine. The variance was almost double with these searches before the approval. Average(mean) increased for COVID vaccine near me, & Pfizer side effects. Many are considering getting a vaccine based on searches or already vaccinated and seeing possible side effects after taking the vaccine.On an average, 699,203 doses were administered daily before the approval.On an average, 733,107 doses were administered daily after the approval, which allows us to see that the 30 day period after the approval resulted in more doses of administered vaccination.
+
+
+```{r}
+#Descriptive Stats of Number of doses before approval
+summary(vb$`Total Doses Administered Daily`) #07/23/21-08/23/21
+```
+Mean of 699,203 per day 
+
+
+```{r}
+#Descriptive Stats of Number of doses after approval
+summary(va$`Total Doses Administered Daily`)#08/23/21-09/23/21
+```
+Mean of 733,105, which allows us to see that the 30 day period after the approval resulted in more doses of the vaccination to be issued.
+
+Before:
+From the plot it is noticeable that searches for the vaccine remained stable before the FDA approval.
+The search for vaccine near me had a small spike after August 2, which leveled off after August 9.
+  After the approval we notice a similar trend. Searches for vaccine near me spiked right after the
+approval and then leveled off and stayed parallel to searches for vaccine.
+
+```{r}
+# Gtrends plots before  Approval 
+before<- d%>% 
+  ggplot(aes(x = date,
+             y = hits,group=keyword,
+             color = keyword))  +
+  theme_bw()+
+  labs(title = "Google Web searches before fda Approval ",
+       caption = "Searches from 7/23/21-8/23/21",
+       x= NULL, y = "Searches Per day")+
+  geom_point(color="black")+
+geom_smooth(aes(x = date, y = hits))  + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+# Gtrends plots  after Approval 
+date2 <- gtrends(c(" Pfizer vaccine", " covid vaccine near me"), geo = "US", time = "2021-08-23 2021-09-23", low_search_volume = T)
+plot(date2)
+a<- as_tibble(date2$interest_over_time)
+a<- subset(a,select = -c(4:7))
+a<- group_by(a, keyword)
+a<- as.data.frame(a)
+a
+
+a2<- a %>%
+  group_by(keyword) %>%
+  tidyr::pivot_wider(names_from = keyword,
+              values_from = hits) %>%
+  na.omit()
+
+a2$date<-as.character(a2$date)
+a2$` Pfizer vaccine`<-as.integer(a2$` Pfizer vaccine`)
+a2$` covid vaccine near me`<-as.integer(a2$` covid vaccine near me`)
+a2
+
+after<-a %>% 
+  ggplot(aes(x = a$date,
+             y = a$hits,group=a$keyword,
+             color = keyword))  +
+  theme_bw()+
+  labs(title = "Google Web searches After fda Approval ",
+       caption = " Searches from 8/23/21-9/23/21",
+       x= NULL, y = "Total searches")+
+  geom_point(color="black")+
+geom_smooth(aes(x = a$date, y = a$hits))  + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+#Plot of both  searches 
+before + after + plot_layout( ncol=2)
+```
+Plot of both searches using the  ;patchwork; package
+The side by side plots show us that the search trends remained stable before and after the approval.
+
+
+
+
+###Plot of both CDC data using the;patchwork package:
+It should be noted here that these two trends are not readily comparable. Because the y-Axis numbers
+are not the same. However, we get the general impression of the trend, before and after the approval.We notice there’s an upward trend in the total doses administered daily, in daily administered doses after the approval.
+```{r}
+#Plots of CDC data Before Approval 
+options(scipen =1000000)
+bvacc<-ggplot(vb) +
+  geom_point(aes(x = Date, y = vb$`Total Doses Administered Daily`, color = vb$`Total Doses Administered Daily`), size = 2)  +
+  stat_smooth(aes(x = Date, y =vb$`Total Doses Administered Daily`), geom = "smooth")
+
+#Plots of CDC data  After Approval 
+avacc<- ggplot(va) +
+  geom_point(aes(x = Date, y = va$`Total Doses Administered Daily`, color = va$`Total Doses Administered Daily`), size = 2)  + stat_smooth(aes(x = Date, y =va$`Total Doses Administered Daily`), geom = "smooth")
+
+bvacc#400,000-1mil
+avacc#250,000-1.25Mil
+```
+
+
+#Related searches before and after for keywords
+
+```{r}
+date1$related_queries %>%
+  filter(related_queries=="top") %>%
+  top_n(10,value) %>%
+  ggplot(aes(x=value,y=subject,fill="red")) + 
+  geom_bar(stat='identity',show.legend = F) + 
+  coord_flip() + labs(title="Queries most related with 'covid' before approval")
+
+date2$related_queries %>%
+  filter(related_queries=="top") %>%
+  top_n(10,value) %>%
+  ggplot(aes(x=value,y=subject,fill="red")) + 
+  geom_bar(stat='identity',show.legend = F) + 
+  coord_flip() + labs(title="Queries most related with 'covid' after approval")
+```
+  From the related search keywords we notice that, before the approval people were searching for where
+to get the Pfizer vaccine, including searching for nearby drugstores, such as Walgreen.After the approval, the major searches revolved around finding a nearby store to get the vaccine.The search results and CDC data gave us a overall impression of vaccine related queries before and after
+the approval and daily dosage of administration around the country. 
+  We can conclude that, people got interested to find a place to get a vaccine after the approval. However, an interesting trend is that, after the approval the total dosage administered per day decreased, even though from the summary statistics
+we noticed that the mean number of daily administered vaccines increased after the FDA approval.
+
+
+## Discussion
+  After completing this data observation we detected that throughout the thirty day period before and after the approval of the Covid-19 vaccination there were alot of changes ranging from the amount of doses administered to the number of search hits. Our goal was to determine if the approval had a positive effect on vaccination rates. Using the google trends data  we chose keywords that could indicate signs of individuals who were interested in or probably already vaccinated, allowing us to use the search intensity for each keyword and comparing it to the actual vaccination rate. When running summaries comparing the before and after period of the approval, we noticed that the search hits increased for two keywords. 
+    After calculating the average number of doses administered from July 23, 2021 through August 23,2021 we noticed that average DA seemed to be higher during the 30 day after period which was August 23,2021-September 23,2021. This was helpful when it came closer to answering our research question. Based on this data we can infer   that vaccination rates have increased since FDA’s approval with a few limitations. Advantages of this study can include the direct access of covid dosage rates which was updated daily allowing us to get an accurate estimate of who is actually receiving the vaccine by date. Date played a very significant role and Linear regression models were run to test the significance of it for both periods.
+  From the information from both the Gtrends and CDC data we saw an increase for two keyword  searches  allowing us to come closer to answering our research question and proving that the approval increased vaccination rates. Some limitations of the study may include Longitudinal study/survey solely focused on vaccinated individuals before dates, Breakdown of region where most were getting vaccinated along with search intensity ,Include other vaccinations, Identify which dosage received a fully vaccinated rate. Further studies should consider these factors in order to get a better understanding of the overall effect and how other factors play a part on vaccination rates across the US.
+
+## References
